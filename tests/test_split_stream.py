@@ -21,13 +21,27 @@ def test_cli_missing_file():
 PSANA_ARGS = ["--experiment=myexp", "--run", "42"]
 
 
-def test_cli_stub_warns_stderr(synthetic_stream_path, capsys):
+def test_cli_notimplemented_warns_stderr(synthetic_stream_path, capsys, monkeypatch):
+    """CLI catches NotImplementedError from filter factory and warns on stderr."""
+    import frame_wrangler.stream.cli as cli_mod
+
+    def _raises(code, **kwargs):
+        raise NotImplementedError("not yet implemented")
+
+    monkeypatch.setattr(cli_mod, "make_event_code_filter", _raises)
     main([str(synthetic_stream_path), "--event-codes=40,41", "--labels=Dark,Light"] + PSANA_ARGS)
     captured = capsys.readouterr()
     assert "not yet implemented" in captured.err.lower() or "Warning" in captured.err
 
 
-def test_cli_stub_no_output_files_written(synthetic_stream_path):
+def test_cli_notimplemented_no_output_files_written(synthetic_stream_path, monkeypatch):
+    """CLI writes no output files when filter factory raises NotImplementedError."""
+    import frame_wrangler.stream.cli as cli_mod
+
+    def _raises(code, **kwargs):
+        raise NotImplementedError("not yet implemented")
+
+    monkeypatch.setattr(cli_mod, "make_event_code_filter", _raises)
     parent = synthetic_stream_path.parent
     main([str(synthetic_stream_path), "--event-codes=40", "--labels=Dark"] + PSANA_ARGS)
     assert not (parent / "test_Dark.stream").exists()
@@ -47,7 +61,7 @@ def test_cli_with_patched_filter(synthetic_stream_path, tmp_path, monkeypatch):
     """Monkeypatch make_event_code_filter with a working implementation."""
     import frame_wrangler.stream.cli as cli_mod
 
-    def _patched_factory(code):
+    def _patched_factory(code, **kwargs):
         def _f(chunk):
             return chunk.event == f"//{code}"
         return _f
@@ -77,7 +91,7 @@ def test_cli_output_preserves_header(synthetic_stream_path, tmp_path, monkeypatc
     import frame_wrangler.stream.cli as cli_mod
     from tests._utils import HEADER
 
-    def _patched_factory(code):
+    def _patched_factory(code, **kwargs):
         return lambda chunk: True
 
     monkeypatch.setattr(cli_mod, "make_event_code_filter", _patched_factory)

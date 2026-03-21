@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import sys
 from pathlib import Path
@@ -5,19 +7,26 @@ from pathlib import Path
 from frame_wrangler.stream.stream import Stream
 
 
-def make_event_code_filter(code: str):
+def make_event_code_filter(code: str, method: str = "psana", experiment: str | None = None, runs: list | None = None):
     """
-    Return a filter function for the given event code.
+    Return a filter function (chunk) -> bool for the given event code.
 
-    TODO: implement. The event code may appear in the chunk metadata (Event: field)
-    or may require querying an external database. For now this raises NotImplementedError.
+    Parameters
+    ----------
+    code:
+        Event code to filter on.
+    method:
+        "psana" queries the psana DataSource for timestamps with the given code active.
+        "stream" is not yet implemented.
+    experiment:
+        Required for method="psana".
+    runs:
+        Required for method="psana". List of run numbers as strings.
     """
-    def _filter(chunk):
-        raise NotImplementedError(
-            f"Event-code filtering is not yet implemented (requested code={code!r}). "
-            "Implement make_event_code_filter() in cli.py."
-        )
-    return _filter
+    if method == "psana":
+        from frame_wrangler.stream.psana_filter import make_psana_filter
+        return make_psana_filter(experiment, runs, code)
+    raise NotImplementedError(f"--method={method!r} is not yet implemented")
 
 
 def main(argv=None) -> None:
@@ -79,8 +88,8 @@ def main(argv=None) -> None:
     with Stream(in_path) as stream:
         for code, label in zip(codes, labels):
             out_path = in_path.parent / f"{stem}_{label}.stream"
-            filter_fn = make_event_code_filter(code)
             try:
+                filter_fn = make_event_code_filter(code, method=args.method, experiment=args.experiment, runs=args.run)
                 filtered = stream.filter(filter_fn)
                 filtered.write(out_path)
                 print(f"Wrote {len(filtered)} chunks to {out_path}")
