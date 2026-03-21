@@ -39,7 +39,7 @@ def make_psana_filter(experiment: str, run: str, code: str):
     active = build_event_code_map(experiment, run, int(code))
 
     def _filter(chunk):
-        event = chunk.event
+        event = chunk.event_id
         if event is None:
             return False
         try:
