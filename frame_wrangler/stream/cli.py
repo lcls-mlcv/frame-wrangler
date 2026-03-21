@@ -63,6 +63,11 @@ def main(argv=None) -> None:
         metavar="RUN",
         help="Run number (required when --method=psana)",
     )
+    parser.add_argument(
+        "--outdir",
+        metavar="DIR",
+        help="Output directory for split stream files (default: same directory as input)",
+    )
     args = parser.parse_args(argv)
 
     if args.method == "psana":
@@ -83,10 +88,11 @@ def main(argv=None) -> None:
 
     in_path = Path(args.stream_file)
     stem = in_path.stem
+    out_dir = Path(args.outdir) if args.outdir else in_path.parent
 
     with Stream(in_path) as stream:
         for code, label in zip(codes, labels):
-            out_path = in_path.parent / f"{stem}_{label}.stream"
+            out_path = out_dir / f"{stem}_{label}.stream"
             try:
                 filter_fn = make_event_code_filter(code, method=args.method, experiment=args.experiment, run=args.run)
                 filtered = stream.filter(filter_fn)
