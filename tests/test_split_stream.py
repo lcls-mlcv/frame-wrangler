@@ -18,7 +18,7 @@ def test_cli_missing_file():
         main(["nonexistent.stream", "--event-codes=40", "--labels=Dark"])
 
 
-PSANA_ARGS = ["--experiment=myexp", "--run", "42"]
+PSANA_ARGS = ["--experiment=myexp", "--run=42"]
 
 
 def test_cli_notimplemented_warns_stderr(synthetic_stream_path, capsys, monkeypatch):
