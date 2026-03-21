@@ -38,7 +38,31 @@ def main(argv=None) -> None:
         metavar="LABELS",
         help="Comma-separated output labels (one per event code), e.g. Dark,Light",
     )
+    parser.add_argument(
+        "--method",
+        choices=["psana", "stream"],
+        default="psana",
+        help="Method used to look up event codes (default: psana)",
+    )
+    parser.add_argument(
+        "--experiment",
+        metavar="EXPERIMENT",
+        help="Experiment name (required when --method=psana)",
+    )
+    parser.add_argument(
+        "--run",
+        nargs="+",
+        metavar="RUN",
+        help="Run number(s) (required when --method=psana)",
+    )
     args = parser.parse_args(argv)
+
+    if args.method == "psana":
+        missing = [f"--{f}" for f, v in [("experiment", args.experiment), ("run", args.run)] if v is None]
+        if missing:
+            parser.error(f"{', '.join(missing)} required when --method=psana")
+    elif args.method == "stream":
+        raise NotImplementedError("--method=stream is not yet implemented")
 
     codes = [c.strip() for c in args.event_codes.split(",")]
     labels = [l.strip() for l in args.labels.split(",")]

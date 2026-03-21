@@ -18,16 +18,29 @@ def test_cli_missing_file():
         main(["nonexistent.stream", "--event-codes=40", "--labels=Dark"])
 
 
+PSANA_ARGS = ["--experiment=myexp", "--run", "42"]
+
+
 def test_cli_stub_warns_stderr(synthetic_stream_path, capsys):
-    main([str(synthetic_stream_path), "--event-codes=40,41", "--labels=Dark,Light"])
+    main([str(synthetic_stream_path), "--event-codes=40,41", "--labels=Dark,Light"] + PSANA_ARGS)
     captured = capsys.readouterr()
     assert "not yet implemented" in captured.err.lower() or "Warning" in captured.err
 
 
 def test_cli_stub_no_output_files_written(synthetic_stream_path):
     parent = synthetic_stream_path.parent
-    main([str(synthetic_stream_path), "--event-codes=40", "--labels=Dark"])
+    main([str(synthetic_stream_path), "--event-codes=40", "--labels=Dark"] + PSANA_ARGS)
     assert not (parent / "test_Dark.stream").exists()
+
+
+def test_cli_psana_requires_experiment_and_run(synthetic_stream_path):
+    with pytest.raises(SystemExit):
+        main([str(synthetic_stream_path), "--event-codes=40", "--labels=Dark", "--method=psana"])
+
+
+def test_cli_stream_method_raises(synthetic_stream_path):
+    with pytest.raises(NotImplementedError):
+        main([str(synthetic_stream_path), "--event-codes=40", "--labels=Dark", "--method=stream"])
 
 
 def test_cli_with_patched_filter(synthetic_stream_path, tmp_path, monkeypatch):
@@ -46,7 +59,7 @@ def test_cli_with_patched_filter(synthetic_stream_path, tmp_path, monkeypatch):
     dest = work_dir / "test.stream"
     shutil.copy(synthetic_stream_path, dest)
 
-    main([str(dest), "--event-codes=40,41", "--labels=Dark,Light"])
+    main([str(dest), "--event-codes=40,41", "--labels=Dark,Light"] + PSANA_ARGS)
 
     dark_path = work_dir / "test_Dark.stream"
     light_path = work_dir / "test_Light.stream"
@@ -73,7 +86,7 @@ def test_cli_output_preserves_header(synthetic_stream_path, tmp_path, monkeypatc
     work_dir.mkdir()
     dest = work_dir / "test.stream"
     shutil.copy(synthetic_stream_path, dest)
-    main([str(dest), "--event-codes=40", "--labels=All"])
+    main([str(dest), "--event-codes=40", "--labels=All"] + PSANA_ARGS)
 
     with Stream(work_dir / "test_All.stream") as s:
         assert s.header == HEADER
