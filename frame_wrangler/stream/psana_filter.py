@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 
-def build_event_code_map(experiment: str, run: str, code: int) -> set[int]:
+def build_event_code_map(experiment: str, run: str, codes: list[int]) -> dict[int, frozenset[int]]:
     """
-    Query psana for all events in the given run and return the set of
-    timestamps where the specified event code is active.
+    Query psana for all events in the given run and return a mapping of
+    timestamp -> frozenset of active event codes (from the provided list).
 
     Parameters
     ----------
@@ -12,40 +12,48 @@ def build_event_code_map(experiment: str, run: str, code: int) -> set[int]:
         Psana experiment name, e.g. "mfx101211025".
     run:
         Run number (as a string) to query.
-    code:
-        Integer event code to filter on (e.g. 203 for laser-on).
+    codes:
+        List of integer event codes to track (e.g. [203, 204]).
     """
     from psana import DataSource
 
-    active: set[int] = set()
+    result: dict[int, frozenset[int]] = {}
     ds = DataSource(exp=experiment, run=int(run), detectors=["timing"])
     myrun = next(ds.runs())
     timing = myrun.Detector("timing")
     for evt in myrun.events():
         evr = timing.raw.eventcodes(evt)
-        if evr[code]:
-            active.add(evt.timestamp)
-    return active
+        result[evt.timestamp] = frozenset(c for c in codes if evr[c])
+    return result
 
 
-def make_psana_filter(experiment: str, run: str, code: str):
+def make_pattern_filter(timestamp_map: dict[int, frozenset[int]], codes: list[int], value: str):
     """
-    Return a filter function (chunk) -> bool that returns True when the chunk's
-    timestamp is present in the psana event-code map for the given code.
+    Return a filter function (chunk) -> bool.
 
-    The chunk's Event: field is expected to be of the form "//TIMESTAMP" where
-    TIMESTAMP is the integer psana event timestamp.
+    A chunk matches when its timestamp is in the map and the set of active
+    codes matches the pattern described by ``value``.
+
+    Parameters
+    ----------
+    timestamp_map:
+        Mapping returned by build_event_code_map.
+    codes:
+        Ordered list of event codes corresponding to positions in ``value``.
+    value:
+        Binary string where '1' means the code at that position must be active
+        and '0' means it must be inactive. E.g. "10" with codes [40, 41] means
+        code 40 active and code 41 inactive.
     """
-    active = build_event_code_map(experiment, run, int(code))
+    expected = frozenset(c for c, v in zip(codes, value) if v == "1")
 
     def _filter(chunk):
-        event = chunk.event_id
-        if event is None:
+        ts = chunk.timestamp
+        if ts is None:
             return False
-        try:
-            ts = int(event.lstrip("/"))
-        except ValueError:
+        active = timestamp_map.get(ts)
+        if active is None:
             return False
-        return ts in active
+        return active == expected
 
     return _filter
