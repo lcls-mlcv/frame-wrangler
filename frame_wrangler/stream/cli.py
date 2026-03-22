@@ -26,14 +26,14 @@ def main(argv=None) -> None:
         help="Comma-separated output class names, e.g. Dark,Light",
     )
     parser.add_argument(
-        "--values",
+        "--binary-coding",
         required=True,
-        metavar="VALUES",
+        metavar="CODING",
         help=(
             "Comma-separated binary patterns (one per label) describing which "
             "event codes must be active. Each pattern has one digit per "
             "--event-codes entry: '1'=active, '0'=inactive. "
-            "E.g. --event-codes=40,41 --values=10,11 means "
+            "E.g. --event-codes=40,41 --binary-coding=10,11 means "
             "Dark requires code 40 on and 41 off; Light requires both on."
         ),
     )
@@ -69,17 +69,17 @@ def main(argv=None) -> None:
 
     codes = [int(c.strip()) for c in args.event_codes.split(",")]
     labels = [l.strip() for l in args.labels.split(",")]
-    values = [v.strip() for v in args.values.split(",")]
+    values = [v.strip() for v in args.binary_coding.split(",")]
 
     if len(labels) != len(values):
         parser.error(
-            f"--labels has {len(labels)} entries but --values has {len(values)}; "
+            f"--labels has {len(labels)} entries but --binary-coding has {len(values)}; "
             "they must match."
         )
     bad_values = [v for v in values if len(v) != len(codes) or not all(c in "01" for c in v)]
     if bad_values:
         parser.error(
-            f"each --values entry must be a binary string of length {len(codes)} "
+            f"each --binary-coding entry must be a binary string of length {len(codes)} "
             f"(one digit per --event-codes entry); invalid: {bad_values}"
         )
 

@@ -8,7 +8,7 @@ from frame_wrangler.stream.cli import main
 from frame_wrangler.stream.stream import Stream
 
 
-# Common psana args used across tests (no --values; tests add that individually)
+# Common psana args used across tests (no --binary-coding; tests add that individually)
 PSANA_ARGS = ["--experiment=myexp", "--run=42"]
 
 
@@ -16,48 +16,48 @@ PSANA_ARGS = ["--experiment=myexp", "--run=42"]
 # Argument validation
 # ---------------------------------------------------------------------------
 
-def test_cli_missing_values(synthetic_stream_path):
-    """--values is required."""
+def test_cli_missing_binary_coding(synthetic_stream_path):
+    """--binary-coding is required."""
     with pytest.raises(SystemExit):
         main([str(synthetic_stream_path), "--event-codes=40,41", "--labels=Dark,Light"] + PSANA_ARGS)
 
 
-def test_cli_mismatched_labels_values(synthetic_stream_path):
+def test_cli_mismatched_labels_binary_coding(synthetic_stream_path):
     """Number of labels must equal number of values."""
     with pytest.raises(SystemExit):
         main([str(synthetic_stream_path), "--event-codes=40,41",
-              "--labels=Dark,Light", "--values=10"] + PSANA_ARGS)
+              "--labels=Dark,Light", "--binary-coding=10"] + PSANA_ARGS)
 
 
 def test_cli_invalid_value_wrong_length(synthetic_stream_path):
     """Value pattern length must equal number of event codes."""
     with pytest.raises(SystemExit):
         main([str(synthetic_stream_path), "--event-codes=40,41",
-              "--labels=Dark", "--values=1"] + PSANA_ARGS)
+              "--labels=Dark", "--binary-coding=1"] + PSANA_ARGS)
 
 
 def test_cli_invalid_value_non_binary(synthetic_stream_path):
     """Value pattern must contain only '0' and '1'."""
     with pytest.raises(SystemExit):
         main([str(synthetic_stream_path), "--event-codes=40,41",
-              "--labels=Dark", "--values=1X"] + PSANA_ARGS)
+              "--labels=Dark", "--binary-coding=1X"] + PSANA_ARGS)
 
 
 def test_cli_missing_file():
     with pytest.raises((FileNotFoundError, OSError, SystemExit)):
-        main(["nonexistent.stream", "--event-codes=40", "--labels=Dark", "--values=1"] + PSANA_ARGS)
+        main(["nonexistent.stream", "--event-codes=40", "--labels=Dark", "--binary-coding=1"] + PSANA_ARGS)
 
 
 def test_cli_psana_requires_experiment_and_run(synthetic_stream_path):
     with pytest.raises(SystemExit):
         main([str(synthetic_stream_path), "--event-codes=40,41",
-              "--labels=Dark,Light", "--values=10,11", "--method=psana"])
+              "--labels=Dark,Light", "--binary-coding=10,11", "--method=psana"])
 
 
 def test_cli_stream_method_raises(synthetic_stream_path):
     with pytest.raises(NotImplementedError):
         main([str(synthetic_stream_path), "--event-codes=40,41",
-              "--labels=Dark", "--values=10", "--method=stream"])
+              "--labels=Dark", "--binary-coding=10", "--method=stream"])
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ def test_cli_notimplemented_warns_stderr(synthetic_stream_path, capsys, monkeypa
     monkeypatch.setattr(pf, "make_pattern_filter", lambda *a, **kw: _raises_not_implemented)
 
     main([str(synthetic_stream_path), "--event-codes=40,41",
-          "--labels=Dark,Light", "--values=10,11"] + PSANA_ARGS)
+          "--labels=Dark,Light", "--binary-coding=10,11"] + PSANA_ARGS)
     captured = capsys.readouterr()
     assert "Warning" in captured.err or "not yet" in captured.err.lower()
 
@@ -90,7 +90,7 @@ def test_cli_notimplemented_no_output_files_written(synthetic_stream_path, monke
 
     parent = synthetic_stream_path.parent
     main([str(synthetic_stream_path), "--event-codes=40,41",
-          "--labels=Dark", "--values=10"] + PSANA_ARGS)
+          "--labels=Dark", "--binary-coding=10"] + PSANA_ARGS)
     assert not (parent / "test_Dark.stream").exists()
 
 
@@ -121,7 +121,7 @@ def test_cli_with_patched_filter(synthetic_stream_path, tmp_path, monkeypatch):
 
     # "10" → only code 40 active → Dark; "01" → only code 41 active → Light
     main([str(dest), "--event-codes=40,41", "--labels=Dark,Light",
-          "--values=10,01"] + PSANA_ARGS)
+          "--binary-coding=10,01"] + PSANA_ARGS)
 
     with Stream(work_dir / "test_Dark.stream") as dark, \
          Stream(work_dir / "test_Light.stream") as light:
@@ -142,7 +142,7 @@ def test_cli_output_preserves_header(synthetic_stream_path, tmp_path, monkeypatc
     work_dir.mkdir()
     dest = work_dir / "test.stream"
     shutil.copy(synthetic_stream_path, dest)
-    main([str(dest), "--event-codes=40", "--labels=All", "--values=1"] + PSANA_ARGS)
+    main([str(dest), "--event-codes=40", "--labels=All", "--binary-coding=1"] + PSANA_ARGS)
 
     with Stream(work_dir / "test_All.stream") as s:
         assert s.header == HEADER
